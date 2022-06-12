@@ -1,0 +1,129 @@
+version: '3'
+services:
+  postgres:
+    image: 'postgres:latest'
+    environment:
+      - POSTGRES_PASSWORD=postgres_password
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 200M
+        reservations:
+          cpus: '0.10'
+          memory: 50M
+  redis:
+    image: 'redis:latest'
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 200M
+        reservations:
+          cpus: '0.10'
+          memory: 50M
+  nginx:
+    depends_on:
+      - api
+      - client
+    image: 'djkrnl/zad2:nginx'
+    ports:
+      - '3050:80'
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: 500M
+        reservations:
+          cpus: '0.20'
+          memory: 200M
+  api:
+    image: 'djkrnl/zad2:server'
+    volumes:
+      - /app/node_modules
+      - ./server:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PGUSER=postgres
+      - PGHOST=postgres
+      - PGDATABASE=postgres
+      - PGPASSWORD=postgres_password
+      - PGPORT=5432
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: 300M
+        reservations:
+          cpus: '0.20'
+          memory: 100M
+  client:
+    stdin_open: true
+    image: 'djkrnl/zad2:client'
+    volumes:
+      - /app/node_modules
+      - ./client:/app
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.30'
+          memory: 500M
+        reservations:
+          cpus: '0.30'
+          memory: 200M
+  worker:
+    image: 'djkrnl/zad2:worker'
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NODE_OPTIONS=--openssl-legacy-provider
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 200M
+        reservations:
+          cpus: '0.10'
+          memory: 50M
